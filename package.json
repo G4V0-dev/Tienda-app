@@ -1,0 +1,11 @@
+{
+  "name": "tienda-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "install:all": "npm --prefix services/iva install && npm --prefix services/pdf install && npm --prefix web install",
+    "dev": "node scripts/dev.mjs",
+    "smoke": "node scripts/smoke.mjs"
+  }
+}

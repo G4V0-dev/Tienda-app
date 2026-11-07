@@ -27,7 +27,10 @@ Tres servicios independientes en Render:
 
 ```
 tienda-app/
+  package.json
   render.yaml
+  scripts/dev.mjs
+  scripts/smoke.mjs
   supabase/schema.sql
   web/
     src/server.js
@@ -50,6 +53,21 @@ tienda-app/
 ## Ejecutar en local
 
 No necesitas Supabase para probar. Si `SUPABASE_DB_URL` no está definida, la app usa SQLite automáticamente.
+
+### Inicio rápido
+
+Instala las dependencias de los tres servicios y arráncalos con un solo comando:
+
+```bash
+npm run install:all
+npm run dev
+```
+
+Abre `http://localhost:3000`.
+
+`npm run dev` inicia `ms-iva` en 4001, `ms-pdf` en 4002 y la web en 3000. `Ctrl+C` detiene los tres.
+
+### Inicio manual
 
 Abre tres terminales.
 
@@ -77,8 +95,6 @@ npm install
 npm start
 ```
 
-Abre `http://localhost:3000`.
-
 Datos de prueba:
 
 - Regístrate con cualquier correo y una contraseña de mínimo 6 caracteres.
@@ -87,6 +103,36 @@ Datos de prueba:
 - CVV: `123`
 
 La app rellena esos datos automáticamente la primera vez que abres el pago.
+
+### Verificación automática
+
+Con los servicios corriendo en local:
+
+```bash
+npm run smoke
+```
+
+La prueba registra un usuario temporal, compra 3 camisetas y 1 hoodie, valida subtotal `255000`, IVA `48450`, total `303450` y descarga el PDF.
+
+Para verificar un despliegue en Render:
+
+```bash
+BASE_URL=https://tienda-web.onrender.com npm run smoke
+```
+
+En PowerShell:
+
+```powershell
+$env:BASE_URL="https://tienda-web.onrender.com"; npm run smoke
+```
+
+En CMD:
+
+```cmd
+set BASE_URL=https://tienda-web.onrender.com && npm run smoke
+```
+
+La prueba crea un usuario y una orden de prueba con correo aleatorio. Tenlo en cuenta si revisas los datos en Supabase.
 
 ### Variables de entorno locales
 
