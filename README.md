@@ -335,12 +335,12 @@ Respuesta esperada:
 
 ## Subir el proyecto a GitHub
 
-El repositorio de destino es `https://github.com/G4V0-dev/tienda-app`. Si usas otro nombre, cámbialo en los comandos.
+El repositorio de destino es `https://github.com/G4V0-dev/Tienda-app`. Si usas otro nombre, cámbialo en los comandos.
 
 Primero crea el repositorio vacío en GitHub:
 
-1. Entra a [https://github.com/new](https://github.com/new).
-2. Nombre: `tienda-app`.
+1. Entra a [https://github.com/new?name=Tienda-app](https://github.com/new?name=Tienda-app).
+2. Nombre: `Tienda-app`.
 3. No marques README, `.gitignore` ni licencia.
 4. Crea el repositorio.
 
@@ -351,12 +351,18 @@ cd C:\Users\Estudiantes\tienda-app
 
 git init
 git config --local user.name "G4V0-dev"
-git config --local user.email "TU_CORREO_DE_GITHUB"
+git config --local user.email "G4V0-dev@users.noreply.github.com"
 
 git add .
 git commit -m "Tienda con carrito, autenticacion, IVA y comprobante PDF"
 git branch -M main
-git remote add origin https://github.com/G4V0-dev/tienda-app.git
+git remote add origin https://github.com/G4V0-dev/Tienda-app.git
+git push -u origin main
+```
+
+Si el repositorio ya está configurado y solo necesitas actualizar:
+
+```bash
 git push -u origin main
 ```
 
@@ -365,7 +371,7 @@ Notas de seguridad:
 - No pegues contraseñas ni tokens personales en el chat ni en archivos del proyecto.
 - Si Git pide autenticación, usa el navegador de Git Credential Manager o un token clásico con permiso `repo` como contraseña.
 - Nunca guardes el token dentro de la URL del remoto.
-- Verifica el remoto con `git remote -v`. Debe verse solo `https://github.com/G4V0-dev/tienda-app.git`.
+- Verifica el remoto con `git remote -v`. Debe verse solo `https://github.com/G4V0-dev/Tienda-app.git`.
 
 ## Eliminar credenciales de Git después de subir
 
@@ -383,7 +389,20 @@ Busca una entrada de GitHub y bórrala:
 cmdkey /delete:git:https://github.com
 ```
 
-También puedes usar Git Credential Manager:
+También puedes usar Git Credential Manager para ver y cerrar cuentas:
+
+```bash
+git credential-manager github list
+git credential-manager github logout G4V0-dev
+```
+
+Si tienes otra cuenta guardada que no quieres conservar:
+
+```bash
+git credential-manager github logout NOMBRE_DE_LA_CUENTA
+```
+
+También puedes borrar la credencial genérica:
 
 ```bash
 git credential-manager erase
