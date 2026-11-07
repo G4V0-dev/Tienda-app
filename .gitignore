@@ -10,3 +10,4 @@ data/
 npm-debug.log*
 *.log
 dev.pid
+comprobante-smoke.pdf

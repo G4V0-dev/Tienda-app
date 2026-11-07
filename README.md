@@ -134,6 +134,14 @@ set BASE_URL=https://tienda-web.onrender.com && npm run smoke
 
 La prueba crea un usuario y una orden de prueba con correo aleatorio. Tenlo en cuenta si revisas los datos en Supabase.
 
+Si quieres conservar el PDF generado:
+
+```bash
+SAVE_PDF=1 npm run smoke
+```
+
+El archivo queda como `comprobante-smoke.pdf` y está ignorado por Git.
+
 ### Variables de entorno locales
 
 Cada servicio trae un `.env.example`. Para usar Supabase en local:

@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+
 const base = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
 function fail(message) {
@@ -87,6 +89,11 @@ if (!String(receipt.headers.get('content-type')).includes('application/pdf')) {
 const pdf = Buffer.from(await receipt.arrayBuffer());
 if (pdf.subarray(0, 4).toString() !== '%PDF') fail('El archivo no tiene firma PDF');
 if (pdf.length < 1000) fail('El PDF es demasiado pequeño');
+
+if (process.env.SAVE_PDF === '1') {
+  fs.writeFileSync('comprobante-smoke.pdf', pdf);
+  console.log('[smoke] PDF guardado en comprobante-smoke.pdf');
+}
 
 console.log(`[smoke] usuario: ${email}`);
 console.log(`[smoke] orden: ${order.id}`);
