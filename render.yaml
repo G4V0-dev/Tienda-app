@@ -1,0 +1,60 @@
+services:
+  - type: web
+    name: tienda-iva
+    runtime: node
+    plan: free
+    rootDir: services/iva
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: IVA_RATE
+        value: "0.19"
+
+  - type: web
+    name: tienda-pdf
+    runtime: node
+    plan: free
+    rootDir: services/pdf
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: COMPANY_NAME
+        value: "Tienda Básica S.A.S."
+      - key: COMPANY_NIT
+        value: "901.234.567-8"
+      - key: COMPANY_ADDRESS
+        value: "Calle 123 #45-67, Bogotá, Colombia"
+      - key: COMPANY_PHONE
+        value: "+57 601 123 4567"
+
+  - type: web
+    name: tienda-web
+    runtime: node
+    plan: free
+    rootDir: web
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SUPABASE_DB_URL
+        sync: false
+      - key: IVA_URL
+        fromService:
+          type: web
+          name: tienda-iva
+          property: host
+      - key: PDF_URL
+        fromService:
+          type: web
+          name: tienda-pdf
+          property: host

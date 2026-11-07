@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tienda Básica</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <strong>Tienda Básica</strong>
+    <div id="session" class="session"></div>
+  </header>
+
+  <main class="container">
+    <section id="auth-view" class="card narrow">
+      <h1>Ingresa o crea tu cuenta</h1>
+      <p class="muted">Autenticación con correo y contraseña. El pago es simulado.</p>
+      <form id="auth-form">
+        <label>Nombre <span class="muted">(solo para registro)</span>
+          <input id="auth-name" autocomplete="name" placeholder="Tu nombre">
+        </label>
+        <label>Correo
+          <input id="auth-email" type="email" autocomplete="email" required placeholder="tu@correo.com">
+        </label>
+        <label>Contraseña
+          <input id="auth-password" type="password" autocomplete="current-password" required minlength="6" placeholder="Mínimo 6 caracteres">
+        </label>
+        <div class="row">
+          <button type="submit" class="primary">Ingresar</button>
+          <button type="button" id="register-btn">Crear cuenta</button>
+        </div>
+      </form>
+      <p id="auth-msg" class="msg"></p>
+    </section>
+
+    <section id="shop-view" hidden>
+      <div class="layout">
+        <div>
+          <h1>Catálogo</h1>
+          <p class="muted">Ropa básica. Elige modelos y ajusta cantidades.</p>
+          <div id="products" class="grid"></div>
+        </div>
+
+        <aside class="card cart">
+          <h2>Carrito</h2>
+          <div id="cart"></div>
+          <div id="totals" class="totals"></div>
+          <button id="checkout-btn" class="primary wide" disabled>Pagar</button>
+          <p id="cart-msg" class="msg"></p>
+        </aside>
+      </div>
+    </section>
+
+    <section id="success-view" class="card narrow" hidden>
+      <h1>Pago aprobado</h1>
+      <p class="muted">Tu pedido quedó confirmado. Este comprobante es ficticio.</p>
+      <div id="success-summary" class="summary"></div>
+      <div class="row">
+        <button id="download-btn" class="primary">Descargar comprobante PDF</button>
+        <button id="continue-btn">Seguir comprando</button>
+      </div>
+      <p id="success-msg" class="msg"></p>
+    </section>
+  </main>
+
+  <div id="pay-modal" class="modal" hidden>
+    <div class="card modal-card">
+      <h2>Pago simulado</h2>
+      <p class="muted">Pasarela ficticia. No se cobra dinero real.</p>
+      <form id="pay-form">
+        <label>Nombre en la tarjeta
+          <input id="card-name" autocomplete="cc-name" required placeholder="Como aparece en la tarjeta">
+        </label>
+        <label>Número de tarjeta
+          <input id="card-number" inputmode="numeric" required maxlength="19" placeholder="4242 4242 4242 4242">
+        </label>
+        <div class="row">
+          <label>Vencimiento
+            <input id="card-expiry" required maxlength="5" placeholder="MM/AA">
+          </label>
+          <label>CVV
+            <input id="card-cvv" inputmode="numeric" required maxlength="4" placeholder="123">
+          </label>
+        </div>
+        <div class="row">
+          <button type="submit" id="pay-btn" class="primary">Pagar</button>
+          <button type="button" id="cancel-pay">Cancelar</button>
+        </div>
+      </form>
+      <p id="pay-msg" class="msg"></p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
