@@ -1,10 +1,14 @@
 import fs from 'node:fs';
 
-const base = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+const base = (process.env.BASE_URL || 'http://localhost:3000').trim().replace(/\/+$/, '');
 
 function fail(message) {
   console.error(`[smoke] FAIL: ${message}`);
   process.exit(1);
+}
+
+if (!/^https?:\/\//i.test(base)) {
+  fail(`BASE_URL inválida: ${base}`);
 }
 
 async function request(path, options = {}) {
