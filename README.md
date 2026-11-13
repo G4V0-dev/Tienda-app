@@ -5,7 +5,7 @@ Aplicación real de carrito de compras con autenticación, catálogo de ropa bá
 ## Arquitectura
 
 ```
-Navegador
+Navegador / App Expo
    |
    v
 tienda-web (Express: frontend + API + JWT)
@@ -32,6 +32,13 @@ tienda-app/
   scripts/dev.mjs
   scripts/smoke.mjs
   supabase/schema.sql
+  tests/                 Pruebas de API y microservicios (node:test)
+  tests/e2e/             Prueba E2E web (Playwright)
+  mobile/                App Expo SDK 54 (Expo Router + TypeScript)
+    src/app/
+    src/contexts/
+    src/lib/
+    __tests__/
   web/
     src/server.js
     src/db.js
@@ -141,6 +148,39 @@ SAVE_PDF=1 npm run smoke
 ```
 
 El archivo queda como `comprobante-smoke.pdf` y está ignorado por Git.
+
+### App móvil con Expo
+
+La carpeta `mobile/` contiene una app **Expo SDK 54 + Expo Router + TypeScript**
+que consume la misma API y microservicios:
+
+```bash
+npm run install:all
+npm run dev            # terminal 1: los 3 servicios
+cd mobile
+npm start              # terminal 2: Metro / Expo Go
+```
+
+Abre el QR con Expo Go (SDK 54). La app detecta la IP de Metro y usa el puerto
+`3000`; si el teléfono no llega al backend, define
+`EXPO_PUBLIC_API_URL=http://TU_IP:3000` en `mobile/.env`.
+
+Incluye login/registro, catálogo, carrito persistente con AsyncStorage, pago
+simulado y descarga de la factura PDF con `expo-file-system` + `expo-sharing`.
+Detalles en [`mobile/README.md`](mobile/README.md).
+
+### Pruebas automatizadas
+
+| Comando | Cobertura |
+| --- | --- |
+| `npm test` | API, carrito del servidor, IVA y PDF (node:test) |
+| `npm run test:mobile` | Lógica y componentes de la app Expo (Jest + Testing Library) |
+| `npm run test:e2e` | Flujo web completo con Playwright (compra + descarga del PDF) |
+| `npm run test:all` | Las tres suites |
+
+La primera vez, instala el navegador de Playwright con
+`npx playwright install chromium`. La suite E2E arranca los servicios sola o
+reutiliza los que ya estén corriendo.
 
 ### Variables de entorno locales
 
@@ -440,7 +480,7 @@ Si lo que quieres es eliminar la cuenta de GitHub, eso se hace en **Settings > A
 - Los JWT expiran en 7 días y se firman con `JWT_SECRET`.
 - Los precios y el IVA se recalculan en el servidor; no se confía en el carrito del navegador.
 - Supabase se usa por conexión directa a Postgres, no con la clave anon.
-- Para producción real faltarían pasarela de pago, verificación de correo, recuperación de contraseña, HTTPS propio, límites de tasa y pruebas automatizadas.
+- Para producción real faltarían pasarela de pago, verificación de correo, recuperación de contraseña, HTTPS propio y límites de tasa.
 
 ## Problemas comunes
 

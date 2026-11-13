@@ -4,8 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "install:all": "npm --prefix services/iva install && npm --prefix services/pdf install && npm --prefix web install",
+    "install:all": "npm install && npm --prefix services/iva install && npm --prefix services/pdf install && npm --prefix web install && npm --prefix mobile install",
     "dev": "node scripts/dev.mjs",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "test": "node --test --test-reporter=spec tests/*.test.mjs",
+    "test:e2e": "playwright test",
+    "test:mobile": "npm --prefix mobile test",
+    "test:all": "npm test && npm run test:mobile && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0"
   }
 }

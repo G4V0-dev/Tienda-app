@@ -13,7 +13,13 @@ app.get('/health', (req, res) => {
 });
 
 app.post('/calcular', (req, res) => {
-  const subtotal = Number(req.body?.subtotal);
+  const raw = req.body?.subtotal;
+  const subtotal =
+    typeof raw === 'number'
+      ? raw
+      : typeof raw === 'string' && raw.trim() !== ''
+        ? Number(raw)
+        : NaN;
 
   if (!Number.isFinite(subtotal) || subtotal < 0) {
     return res.status(400).json({ error: 'El subtotal debe ser un número mayor o igual a cero' });

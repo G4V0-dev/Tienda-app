@@ -11,3 +11,9 @@ npm-debug.log*
 *.log
 dev.pid
 comprobante-smoke.pdf
+test-results/
+playwright-report/
+blob-report/
+mobile/.expo/
+mobile/dist/
+mobile/dist-android/
