@@ -1,6 +1,8 @@
 require('dotenv').config();
 
 const express = require('express');
+const swaggerUi = require('swagger-ui-express');
+const openapi = require('../openapi');
 const PDFDocument = require('pdfkit');
 
 const app = express();
@@ -169,6 +171,15 @@ app.post('/comprobante', (req, res) => {
     }
     doc.end();
   }
+});
+
+app.use(
+  '/docs',
+  swaggerUi.serve,
+  swaggerUi.setup(openapi, { customSiteTitle: 'ms-pdf API' })
+);
+app.get('/openapi.json', (req, res) => {
+  res.json(openapi);
 });
 
 app.use((req, res) => {
