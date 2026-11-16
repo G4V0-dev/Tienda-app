@@ -5,7 +5,6 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { init, read, write, randomUUID, cloudState } = require('./db');
-const products = require('./products');
 const swaggerUi = require('swagger-ui-express');
 const openapi = require('../openapi');
 
@@ -83,6 +82,41 @@ async function admin(req, res, next) {
   }
 }
 
+function parseProductInput(body = {}, existing = {}) {
+  const input = body && typeof body === 'object' ? body : {};
+  const name = input.name === undefined ? existing.name : String(input.name).trim();
+  const description =
+    input.description === undefined
+      ? existing.description || ''
+      : String(input.description).trim();
+  const price = input.price === undefined ? existing.price : Number(input.price);
+  const color =
+    input.color === undefined ? existing.color || '#dbe4ee' : String(input.color).trim();
+  const stock = input.stock === undefined ? existing.stock ?? 0 : Number(input.stock);
+  const active = input.active === undefined ? existing.active ?? 1 : Number(input.active);
+
+  if (!name || name.length > 80) {
+    return { error: 'El nombre es obligatorio y admite máximo 80 caracteres' };
+  }
+  if (!Number.isInteger(price) || price < 0 || price > 100000000) {
+    return { error: 'El precio debe ser un entero entre 0 y 100000000' };
+  }
+  if (!/^#[0-9a-fA-F]{6}$/.test(color)) {
+    return { error: 'El color debe tener formato hexadecimal #RRGGBB' };
+  }
+  if (!Number.isInteger(stock) || stock < 0 || stock > 9999) {
+    return { error: 'El stock debe ser un entero entre 0 y 9999' };
+  }
+  if (![0, 1].includes(active)) {
+    return { error: 'El estado debe ser 0 (inactivo) o 1 (activo)' };
+  }
+  if (description.length > 240) {
+    return { error: 'La descripción admite máximo 240 caracteres' };
+  }
+
+  return { value: { name, description, price, color, stock, active } };
+}
+
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
@@ -93,9 +127,13 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.get('/api/products', (req, res) => {
-  res.json(products);
-});
+app.get('/api/products', route(async (req, res) => {
+  const rows = await read(
+    `SELECT id, name, description, price, color, stock
+     FROM products WHERE active = 1 ORDER BY id`
+  );
+  res.json(rows);
+}));
 
 app.post('/api/auth/register', route(async (req, res) => {
   const { name, email, password } = req.body || {};
@@ -168,6 +206,76 @@ app.get('/api/auth/me', auth, route(async (req, res) => {
   res.json({ user: rows[0] });
 }));
 
+app.get('/api/admin/products', auth, admin, route(async (req, res) => {
+  const rows = await read('SELECT * FROM products ORDER BY id');
+  res.json(rows);
+}));
+
+app.post('/api/admin/products', auth, admin, route(async (req, res) => {
+  const parsed = parseProductInput(req.body);
+  if (parsed.error) return res.status(400).json({ error: parsed.error });
+
+  const rows = await read('SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM products');
+  const id = Number(rows[0].next_id);
+  const now = new Date().toISOString();
+  const { name, description, price, color, stock } = parsed.value;
+
+  await write(
+    `INSERT INTO products
+       (id, name, description, price, color, stock, active, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, 1, $7, $7)`,
+    [id, name, description, price, color, stock, now]
+  );
+
+  const created = await read('SELECT * FROM products WHERE id = $1', [id]);
+  res.status(201).json(created[0]);
+}));
+
+app.put('/api/admin/products/:id', auth, admin, route(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ error: 'Identificador de producto inválido' });
+  }
+
+  const rows = await read('SELECT * FROM products WHERE id = $1', [id]);
+  if (!rows.length) {
+    return res.status(404).json({ error: 'Producto no encontrado' });
+  }
+
+  const parsed = parseProductInput(req.body, rows[0]);
+  if (parsed.error) return res.status(400).json({ error: parsed.error });
+
+  const { name, description, price, color, stock, active } = parsed.value;
+  const now = new Date().toISOString();
+
+  await write(
+    `UPDATE products
+     SET name = $1, description = $2, price = $3, color = $4, stock = $5,
+         active = $6, updated_at = $7
+     WHERE id = $8`,
+    [name, description, price, color, stock, active, now, id]
+  );
+
+  const updated = await read('SELECT * FROM products WHERE id = $1', [id]);
+  res.json(updated[0]);
+}));
+
+app.delete('/api/admin/products/:id', auth, admin, route(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ error: 'Identificador de producto inválido' });
+  }
+
+  const rows = await read('SELECT * FROM products WHERE id = $1', [id]);
+  if (!rows.length) {
+    return res.status(404).json({ error: 'Producto no encontrado' });
+  }
+
+  const now = new Date().toISOString();
+  await write('UPDATE products SET active = 0, updated_at = $1 WHERE id = $2', [now, id]);
+  res.json({ ...rows[0], active: 0, updated_at: now });
+}));
+
 app.post('/api/checkout', auth, route(async (req, res) => {
   const { items, card } = req.body || {};
 
@@ -179,7 +287,10 @@ app.post('/api/checkout', auth, route(async (req, res) => {
   let subtotal = 0;
 
   for (const item of items) {
-    const product = products.find((p) => p.id === Number(item.id));
+    const rows = await read('SELECT * FROM products WHERE id = $1 AND active = 1', [
+      Number(item.id)
+    ]);
+    const product = rows[0];
     if (!product) continue;
     const qty = Math.min(99, Math.max(1, Number.parseInt(item.qty, 10) || 1));
     subtotal += product.price * qty;
