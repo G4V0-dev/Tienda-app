@@ -3,6 +3,7 @@ const path = require('path');
 const { randomUUID } = require('crypto');
 const { Pool } = require('pg');
 const Database = require('better-sqlite3');
+const seedProducts = require('./products');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -29,7 +30,19 @@ const schemaStatements = [
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'user',
     created_at TEXT NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS products (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    price INTEGER NOT NULL,
+    color TEXT NOT NULL,
+    stock INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS orders (
     id TEXT PRIMARY KEY,
@@ -57,7 +70,8 @@ const schemaStatements = [
     created_at TEXT NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS idx_orders_user ON orders (user_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items (order_id)`
+  `CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items (order_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_products_active ON products (active)`
 ];
 
 const connectionCodes = new Set([
@@ -109,18 +123,62 @@ async function createCloudSchema() {
   }
 }
 
+function migrateLocalRoleColumn() {
+  const columns = sqlite.prepare('PRAGMA table_info(users)').all();
+  if (!columns.some((column) => column.name === 'role')) {
+    sqlite
+      .prepare("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'")
+      .run();
+  }
+}
+
+async function migrateCloudRoleColumn() {
+  const result = await pool.query(
+    `SELECT 1 FROM information_schema.columns
+     WHERE table_name = 'users' AND column_name = 'role'`
+  );
+
+  if (!result.rowCount) {
+    await pool.query("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'");
+  }
+}
+
+async function seedCatalog() {
+  const now = new Date().toISOString();
+
+  for (const product of seedProducts) {
+    await write(
+      `INSERT INTO products (id, name, description, price, color, stock, active, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, 1, $7, $7)
+       ON CONFLICT DO NOTHING`,
+      [
+        product.id,
+        product.name,
+        product.description,
+        product.price,
+        product.color,
+        product.stock,
+        now
+      ]
+    );
+  }
+}
+
 async function init() {
   for (const statement of schemaStatements) {
     sqlite.prepare(statement).run();
   }
+  migrateLocalRoleColumn();
 
   if (!pool) {
     console.warn('[db] SUPABASE_DB_URL no configurada. Se usa SQLite local y cola de sincronización.');
+    await seedCatalog();
     return;
   }
 
   try {
     await createCloudSchema();
+    await migrateCloudRoleColumn();
     cloudUp = true;
     console.log('[db] Supabase conectado.');
     await flushQueue();
@@ -129,6 +187,7 @@ async function init() {
     console.warn('[db] Supabase no disponible al iniciar. Se usa SQLite:', error.message);
   }
 
+  await seedCatalog();
   timer = setInterval(checkCloud, 30000);
   timer.unref?.();
 }
@@ -142,6 +201,7 @@ async function checkCloud() {
 
     if (wasDown) {
       await createCloudSchema();
+      await migrateCloudRoleColumn();
     }
 
     cloudUp = true;
@@ -160,12 +220,12 @@ async function checkCloud() {
 
 async function write(sql, params = []) {
   const local = toSqlite(sql, params);
-  sqlite.prepare(local.text).run(local.params);
+  const result = sqlite.prepare(local.text).run(local.params);
 
   if (pool && cloudUp) {
     try {
       await pool.query(sql, params);
-      return 'cloud';
+      return { target: 'cloud', changes: result.changes };
     } catch (error) {
       if (!isConnectionError(error)) throw error;
       cloudUp = false;
@@ -174,7 +234,7 @@ async function write(sql, params = []) {
   }
 
   enqueue(sql, params);
-  return 'local';
+  return { target: 'local', changes: result.changes };
 }
 
 async function read(sql, params = []) {

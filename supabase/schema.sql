@@ -3,7 +3,20 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user',
   created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS products (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  price INTEGER NOT NULL,
+  color TEXT NOT NULL,
+  stock INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS orders (
@@ -36,3 +49,4 @@ CREATE TABLE IF NOT EXISTS sync_queue (
 
 CREATE INDEX IF NOT EXISTS idx_orders_user ON orders (user_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items (order_id);
+CREATE INDEX IF NOT EXISTS idx_products_active ON products (active);
