@@ -10,6 +10,8 @@ type Props = {
 };
 
 export function ProductCard({ product, onAdd }: Props) {
+  const out = product.stock <= 0;
+
   return (
     <View style={styles.card}>
       <View style={[styles.thumb, { backgroundColor: product.color }]}>
@@ -23,17 +25,29 @@ export function ProductCard({ product, onAdd }: Props) {
         {product.description}
       </Text>
 
+      <Text style={[styles.stock, out && styles.stockOut]}>
+        {out ? 'Agotado' : `${product.stock} disponibles`}
+      </Text>
+
       <View style={styles.footer}>
         <Text style={styles.price}>{money(product.price)}</Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Agregar ${product.name} al carrito`}
+          accessibilityLabel={
+            out ? `${product.name} agotado` : `Agregar ${product.name} al carrito`
+          }
+          accessibilityState={{ disabled: out }}
           testID={`product-add-${product.id}`}
+          disabled={out}
           onPress={() => onAdd(product)}
-          style={({ pressed }) => [styles.add, pressed && styles.addPressed]}
+          style={({ pressed }) => [
+            styles.add,
+            out && styles.addDisabled,
+            pressed && !out && styles.addPressed
+          ]}
           hitSlop={8}
         >
-          <Text style={styles.addLabel}>+</Text>
+          <Text style={styles.addLabel}>{out ? '—' : '+'}</Text>
         </Pressable>
       </View>
     </View>
@@ -85,6 +99,15 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.ink
   },
+  stock: {
+    fontSize: 11,
+    color: colors.muted,
+    marginTop: -2
+  },
+  stockOut: {
+    color: colors.accent,
+    fontWeight: '700'
+  },
   add: {
     width: 34,
     height: 34,
@@ -92,6 +115,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  addDisabled: {
+    backgroundColor: colors.line
   },
   addPressed: {
     backgroundColor: colors.accent

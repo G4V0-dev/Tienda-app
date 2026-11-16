@@ -60,6 +60,10 @@ export default function CatalogScreen() {
 
   const onAdd = useCallback(
     (product: Product) => {
+      if (product.stock <= 0) {
+        setNotice(`${product.name} está agotado`);
+        return;
+      }
       add(product);
       setNotice(`${product.name} agregado al carrito`);
     },

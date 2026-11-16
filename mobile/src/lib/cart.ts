@@ -11,20 +11,29 @@ export type CartAction =
   | { type: 'clear' }
   | { type: 'hydrate'; items: CartItem[] };
 
-function clampQty(value: number): number {
+function clampQty(value: number, max = MAX_QTY): number {
   const qty = Math.trunc(Number(value) || 0);
-  return Math.min(MAX_QTY, Math.max(0, qty));
+  return Math.min(max, Math.max(0, qty));
+}
+
+function clampStock(value: unknown): number {
+  const stock = Math.trunc(Number(value));
+  if (!Number.isFinite(stock)) return MAX_QTY;
+  return Math.min(MAX_QTY, Math.max(0, stock));
 }
 
 export function cartReducer(items: CartItem[], action: CartAction): CartItem[] {
   switch (action.type) {
     case 'add': {
+      const stock = clampStock(action.product.stock);
+      if (stock <= 0) return items;
+
       const existing = items.find((item) => item.id === action.product.id);
 
       if (existing) {
         return items.map((item) =>
           item.id === action.product.id
-            ? { ...item, qty: clampQty(item.qty + 1) }
+            ? { ...item, stock, qty: clampQty(item.qty + 1, stock) }
             : item
         );
       }
@@ -36,6 +45,7 @@ export function cartReducer(items: CartItem[], action: CartAction): CartItem[] {
           name: action.product.name,
           price: action.product.price,
           color: action.product.color,
+          stock,
           qty: 1
         }
       ];
@@ -43,7 +53,9 @@ export function cartReducer(items: CartItem[], action: CartAction): CartItem[] {
 
     case 'increment':
       return items.map((item) =>
-        item.id === action.id ? { ...item, qty: clampQty(item.qty + 1) } : item
+        item.id === action.id
+          ? { ...item, qty: clampQty(item.qty + 1, item.stock) }
+          : item
       );
 
     case 'decrement':
@@ -93,9 +105,14 @@ export function sanitizeCart(value: unknown): CartItem[] {
     const candidate = raw as Partial<CartItem>;
     const id = Number(candidate.id);
     const price = Number(candidate.price);
-    const qty = Math.min(MAX_QTY, Math.max(1, Math.trunc(Number(candidate.qty) || 1)));
+    const stock = clampStock(candidate.stock);
+    const qty = Math.min(
+      stock,
+      Math.min(MAX_QTY, Math.max(1, Math.trunc(Number(candidate.qty) || 1)))
+    );
 
     if (!Number.isFinite(id) || !Number.isFinite(price) || price < 0) continue;
+    if (stock <= 0) continue;
     if (seen.has(id)) continue;
 
     seen.add(id);
@@ -104,7 +121,8 @@ export function sanitizeCart(value: unknown): CartItem[] {
       name: String(candidate.name || 'Producto'),
       price,
       qty,
-      color: String(candidate.color || '#E3DCCF')
+      color: String(candidate.color || '#E3DCCF'),
+      stock
     });
   }
 

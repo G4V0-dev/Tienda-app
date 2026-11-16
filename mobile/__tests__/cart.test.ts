@@ -12,7 +12,8 @@ const shirt: Product = {
   name: 'Camiseta Clásica',
   description: 'Algodón 100%',
   price: 45000,
-  color: '#dbe4ee'
+  color: '#dbe4ee',
+  stock: 500
 };
 
 const hoodie: Product = {
@@ -20,7 +21,8 @@ const hoodie: Product = {
   name: 'Hoodie Urbano',
   description: 'Felpa suave',
   price: 120000,
-  color: '#d6d6e3'
+  color: '#d6d6e3',
+  stock: 500
 };
 
 function item(overrides: Partial<CartItem> = {}): CartItem {
@@ -30,6 +32,7 @@ function item(overrides: Partial<CartItem> = {}): CartItem {
     price: 45000,
     qty: 1,
     color: '#dbe4ee',
+    stock: MAX_QTY,
     ...overrides
   };
 }
@@ -54,6 +57,26 @@ describe('cartReducer', () => {
     });
 
     expect(result[0].qty).toBe(MAX_QTY);
+  });
+
+  it('limita la cantidad al stock disponible', () => {
+    const limited = { ...shirt, stock: 2 };
+    const result = cartReducer([item({ qty: 2, stock: 2 })], {
+      type: 'add',
+      product: limited
+    });
+
+    expect(result[0].qty).toBe(2);
+    expect(result[0].stock).toBe(2);
+  });
+
+  it('no agrega productos agotados', () => {
+    const result = cartReducer([], {
+      type: 'add',
+      product: { ...shirt, stock: 0 }
+    });
+
+    expect(result).toEqual([]);
   });
 
   it('incrementa y decrementa sin mutar el estado original', () => {
@@ -128,7 +151,15 @@ describe('sanitizeCart', () => {
     ]);
 
     expect(result).toHaveLength(2);
-    expect(result[0]).toMatchObject({ id: 2, qty: 1 });
-    expect(result[1]).toMatchObject({ id: 4, qty: 12 });
+    expect(result[0]).toMatchObject({ id: 2, qty: 1, stock: MAX_QTY });
+    expect(result[1]).toMatchObject({ id: 4, qty: 12, stock: MAX_QTY });
+  });
+
+  it('recorta la cantidad al stock persistido', () => {
+    const result = sanitizeCart([
+      { id: 5, name: 'Jogger', price: 95000, qty: 8, color: '#eee', stock: 3 }
+    ]);
+
+    expect(result[0]).toMatchObject({ id: 5, qty: 3, stock: 3 });
   });
 });

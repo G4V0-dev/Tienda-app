@@ -10,7 +10,8 @@ const product: Product = {
   name: 'Camiseta Clásica',
   description: 'Algodón 100%, corte regular.',
   price: 45000,
-  color: '#dbe4ee'
+  color: '#dbe4ee',
+  stock: 20
 };
 
 const cartItem: CartItem = {
@@ -18,7 +19,8 @@ const cartItem: CartItem = {
   name: 'Camiseta Clásica',
   price: 45000,
   qty: 2,
-  color: '#dbe4ee'
+  color: '#dbe4ee',
+  stock: 20
 };
 
 describe('ProductCard', () => {
@@ -37,6 +39,17 @@ describe('ProductCard', () => {
     fireEvent.press(screen.getByTestId('product-add-1'));
 
     expect(onAdd).toHaveBeenCalledWith(product);
+  });
+
+  it('muestra el stock y deshabilita agregar cuando está agotado', () => {
+    const onAdd = jest.fn();
+    render(<ProductCard product={{ ...product, stock: 0 }} onAdd={onAdd} />);
+
+    expect(screen.getByText('Agotado')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('product-add-1'));
+
+    expect(onAdd).not.toHaveBeenCalled();
   });
 });
 

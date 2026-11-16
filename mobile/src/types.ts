@@ -4,6 +4,7 @@ export type Product = {
   description: string;
   price: number;
   color: string;
+  stock: number;
 };
 
 export type CartItem = {
@@ -12,12 +13,14 @@ export type CartItem = {
   price: number;
   qty: number;
   color: string;
+  stock: number;
 };
 
 export type User = {
   id: string;
   name: string;
   email: string;
+  role: 'admin' | 'user';
 };
 
 export type Order = {

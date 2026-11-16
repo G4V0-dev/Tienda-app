@@ -17,7 +17,8 @@ const product: Product = {
   name: 'Camiseta Clásica',
   description: 'Algodón 100%',
   price: 45000,
-  color: '#dbe4ee'
+  color: '#dbe4ee',
+  stock: 20
 };
 
 function Probe() {

@@ -22,7 +22,8 @@ const mockLogin = login as jest.Mock;
 const user: User = {
   id: 'user-1',
   name: 'Ana Pérez',
-  email: 'ana@example.com'
+  email: 'ana@example.com',
+  role: 'user'
 };
 
 function Probe() {
