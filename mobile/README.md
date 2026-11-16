@@ -50,6 +50,7 @@ En Android físico, el firewall del PC debe permitir el puerto 3000.
 
 ## Notas
 
+- El catálogo muestra el stock disponible y deshabilita los productos agotados; el carrito nunca supera las unidades disponibles.
 - El pago es ficticio: tarjeta de prueba `4242 4242 4242 4242`, `12/30`, CVV `123`.
 - El PDF es un comprobante ficticio sin validez fiscal.
 - Un build de producción necesita HTTPS en el backend; Android bloquea tráfico cleartext fuera de Expo Go.

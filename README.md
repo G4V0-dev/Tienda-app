@@ -1,6 +1,6 @@
 # Tienda Básica
 
-Carrito de compras con autenticación JWT, catálogo de ropa, IVA 19%, pago simulado y comprobante PDF. Web en Express, app Expo y dos microservicios independientes.
+Carrito de compras con autenticación JWT, roles (`admin`/`user`), catálogo administrable con stock, IVA 19%, pago simulado y comprobante PDF. Web en Express, app Expo y dos microservicios independientes.
 
 ## Arquitectura
 
@@ -35,6 +35,16 @@ npm run dev
 
 Datos de prueba: regístrate con cualquier correo y contraseña de 6+ caracteres; paga con `4242 4242 4242 4242`, `12/30`, CVV `123`.
 
+## Panel de administración
+
+Agrega tu correo a `web/.env` y reinicia los servicios:
+
+```bash
+ADMIN_EMAILS=admin@example.com
+```
+
+Regístrate con ese correo, entra a la tienda y pulsa **Panel admin**. Permite crear productos, editar nombre, precio, color y stock, y eliminar productos con borrado lógico. El stock se valida y descuenta en cada checkout. Detalles en [`docs/features/roles-admin.md`](docs/features/roles-admin.md).
+
 ## App móvil
 
 Expo SDK 54 + Expo Router + TypeScript, mismo backend:
@@ -65,7 +75,7 @@ Cada servicio trae un `.env.example`; copia el que necesites a `.env`.
 
 | Servicio | Variables |
 | --- | --- |
-| `tienda-web` | `PORT`, `JWT_SECRET`, `SUPABASE_DB_URL`, `IVA_URL`, `PDF_URL`, `CORS_ORIGIN`, `DATA_DIR` |
+| `tienda-web` | `PORT`, `JWT_SECRET`, `SUPABASE_DB_URL`, `IVA_URL`, `PDF_URL`, `CORS_ORIGIN`, `DATA_DIR`, `ADMIN_EMAILS` |
 | `ms-iva` | `PORT`, `IVA_RATE` |
 | `ms-pdf` | `PORT`, `COMPANY_NAME`, `COMPANY_NIT`, `COMPANY_ADDRESS`, `COMPANY_PHONE` |
 
@@ -75,16 +85,17 @@ Supabase: usa la URI del **Session pooler** terminada en `?sslmode=require`. Las
 
 | Comando | Cobertura |
 | --- | --- |
-| `npm test` | API, checkout, IVA, PDF y contratos OpenAPI |
+| `npm test` | API, roles, admin, stock, IVA, PDF y contratos OpenAPI |
 | `npm run test:mobile` | Lógica y componentes de la app Expo |
-| `npm run test:e2e` | Compra y descarga del PDF con Playwright |
+| `npm run test:e2e` | Compra, PDF y panel de administración con Playwright |
 | `npm run test:all` | Las tres suites |
 
 La primera vez: `npx playwright install chromium`. Para verificar un despliegue: `BASE_URL=https://tu-web.onrender.com npm run smoke`.
 
 ## Documentación
 
-- [Referencia de API](docs/api.md): endpoints, autenticación y errores.
+- [Referencia de API](docs/api.md): endpoints, roles, admin, autenticación y errores.
+- [Roles y administración](docs/features/roles-admin.md): alcance, reglas, casos límite y matriz de pruebas.
 - [Despliegue en Render](docs/deploy.md): blueprint en cinco pasos.
 - Swagger interactivo: `/docs` en cada servicio; contrato en `/openapi.json`.
 
@@ -92,6 +103,7 @@ La primera vez: `npx playwright install chromium`. Para verificar un despliegue:
 
 - El pago es ficticio: no hay pasarela real ni cobro.
 - Contraseñas con bcrypt; JWT firmado con `JWT_SECRET` y expiración de 7 días.
-- Precios, cantidades e IVA se recalculan en el servidor.
+- Precios, cantidades, IVA y stock se validan en el servidor; el cliente nunca fija precios ni roles.
+- El panel admin usa borrado lógico: las órdenes históricas conservan nombre y precio del producto.
 - Supabase se usa por conexión directa a Postgres; SQLite es el respaldo local y la cola de sincronización.
 - Para producción real faltan pasarela de pago, verificación de correo, recuperación de contraseña y límites de tasa.

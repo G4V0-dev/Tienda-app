@@ -32,6 +32,7 @@ BASE_URL=https://tienda-web.onrender.com npm run smoke
 | `IVA_RATE` | `tienda-iva` | Tasa de IVA; por defecto `0.19` |
 | `COMPANY_NAME`, `COMPANY_NIT`, `COMPANY_ADDRESS`, `COMPANY_PHONE` | `tienda-pdf` | Datos del encabezado del PDF |
 | `CORS_ORIGIN` | `tienda-web` | Origen permitido; por defecto `*` |
+| `ADMIN_EMAILS` | `tienda-web` | Correos administradores separados por coma; el rol se asigna al registrarse |
 | `DATA_DIR` | `tienda-web` | Ruta del SQLite; requiere disco persistente |
 
 ## Notas
@@ -40,3 +41,4 @@ BASE_URL=https://tienda-web.onrender.com npm run smoke
 - El disco de Render es efímero. SQLite se pierde en cada reinicio, pero Supabase conserva los datos; el disco persistente exige plan de pago.
 - Si cambias variables, usa **Manual Deploy > Deploy latest commit**.
 - Las tablas se crean al iniciar `tienda-web`. También puedes ejecutar [`supabase/schema.sql`](../supabase/schema.sql) en el SQL Editor.
+- Para habilitar el panel admin, define `ADMIN_EMAILS` en Render y registra esa cuenta. Si promueves una cuenta existente, actualiza `users.role` a `admin` en Supabase.
