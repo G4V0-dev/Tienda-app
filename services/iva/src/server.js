@@ -1,6 +1,8 @@
 require('dotenv').config();
 
 const express = require('express');
+const swaggerUi = require('swagger-ui-express');
+const openapi = require('../openapi');
 
 const app = express();
 const PORT = process.env.PORT || 4001;
@@ -33,6 +35,15 @@ app.post('/calcular', (req, res) => {
     iva,
     total: subtotal + iva
   });
+});
+
+app.use(
+  '/docs',
+  swaggerUi.serve,
+  swaggerUi.setup(openapi, { customSiteTitle: 'ms-iva API' })
+);
+app.get('/openapi.json', (req, res) => {
+  res.json(openapi);
 });
 
 app.use((req, res) => {
