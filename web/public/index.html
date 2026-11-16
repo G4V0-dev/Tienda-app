@@ -62,6 +62,41 @@
       </div>
       <p id="success-msg" class="msg"></p>
     </section>
+
+    <section id="admin-view" hidden>
+      <div class="admin-head">
+        <div>
+          <h1>Administración</h1>
+          <p class="muted">Crea productos, ajusta precio y stock, o desactiva los que ya no vendes.</p>
+        </div>
+        <button type="button" id="admin-back">Volver a la tienda</button>
+      </div>
+
+      <form id="product-form" class="card">
+        <h2>Nuevo producto</h2>
+        <div class="form-grid">
+          <label>Nombre
+            <input id="p-name" required maxlength="80" placeholder="Bufanda de lana">
+          </label>
+          <label>Descripción
+            <input id="p-description" maxlength="240" placeholder="Tejido suave, unisex.">
+          </label>
+          <label>Precio (COP)
+            <input id="p-price" type="number" min="0" step="1" required placeholder="45000">
+          </label>
+          <label>Stock
+            <input id="p-stock" type="number" min="0" max="9999" step="1" value="0" required>
+          </label>
+          <label>Color
+            <input id="p-color" type="color" value="#dbe4ee">
+          </label>
+        </div>
+        <button type="submit" class="primary">Agregar producto</button>
+        <p id="admin-msg" class="msg"></p>
+      </form>
+
+      <div id="admin-products" class="admin-list"></div>
+    </section>
   </main>
 
   <div id="pay-modal" class="modal" hidden>

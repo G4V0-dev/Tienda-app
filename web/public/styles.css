@@ -124,6 +124,76 @@ h2 {
   font-weight: 700;
 }
 
+.product .stock {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: -4px;
+}
+
+.product .stock.out {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.admin-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.admin-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.admin-product-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.admin-product.inactive {
+  opacity: 0.72;
+}
+
+.admin-actions {
+  margin-top: 4px;
+}
+
+.badge {
+  font-size: 12px;
+  padding: 2px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.badge.on {
+  color: #1a7f37;
+  border-color: #1a7f37;
+}
+
+.badge.off {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+button.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0 14px;
+}
+
 label {
   display: block;
   font-size: 13px;

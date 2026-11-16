@@ -2,6 +2,7 @@ const state = {
   token: localStorage.getItem('token') || '',
   user: readStored('user', null),
   products: [],
+  adminProducts: [],
   cart: readStored('cart', []),
   lastOrder: null
 };
@@ -70,14 +71,20 @@ function showAuth() {
   $('auth-view').hidden = false;
   $('shop-view').hidden = true;
   $('success-view').hidden = true;
+  $('admin-view').hidden = true;
 }
 
 function showShop() {
   $('auth-view').hidden = true;
   $('shop-view').hidden = false;
   $('success-view').hidden = true;
+  $('admin-view').hidden = true;
   renderSession();
   renderCart();
+}
+
+function isAdmin() {
+  return state.user?.role === 'admin';
 }
 
 function renderSession() {
@@ -86,7 +93,8 @@ function renderSession() {
     return;
   }
   $('session').innerHTML = `
-    <span>Hola, ${escapeHtml(state.user.name)}</span>
+    <span>Hola, ${escapeHtml(state.user.name)}${isAdmin() ? ' · Admin' : ''}</span>
+    ${isAdmin() ? '<button type="button" id="admin-btn">Panel admin</button>' : ''}
     <button type="button" id="logout-btn">Salir</button>
   `;
 }
@@ -136,24 +144,56 @@ function logout() {
 }
 
 function renderProducts() {
-  $('products').innerHTML = state.products.map((product) => `
+  $('products').innerHTML = state.products.map((product) => {
+    const out = product.stock <= 0;
+    return `
     <article class="product">
       <div class="thumb" style="background:${product.color}">${escapeHtml(product.name.charAt(0))}</div>
       <h3>${escapeHtml(product.name)}</h3>
       <p>${escapeHtml(product.description)}</p>
       <div class="price">${money(product.price)}</div>
-      <button type="button" class="primary" data-add="${product.id}">Agregar</button>
+      <div class="stock${out ? ' out' : ''}">${out ? 'Agotado' : `${product.stock} disponibles`}</div>
+      <button type="button" class="primary" data-add="${product.id}" ${out ? 'disabled' : ''}>
+        ${out ? 'Agotado' : 'Agregar'}
+      </button>
     </article>
-  `).join('');
+  `;
+  }).join('');
+}
+
+async function loadProducts() {
+  state.products = await api('/api/products');
+  reconcileCart();
+  renderProducts();
+}
+
+function reconcileCart() {
+  const byId = new Map(state.products.map((product) => [product.id, product]));
+  const next = [];
+
+  for (const item of state.cart) {
+    const product = byId.get(item.id);
+    if (!product || product.stock <= 0) continue;
+    next.push({
+      ...item,
+      name: product.name,
+      price: product.price,
+      qty: Math.min(item.qty, product.stock, 99)
+    });
+  }
+
+  state.cart = next;
+  saveCart();
 }
 
 function addToCart(id) {
   const product = state.products.find((item) => item.id === id);
-  if (!product) return;
+  if (!product || product.stock <= 0) return;
 
+  const limit = Math.min(99, product.stock);
   const existing = state.cart.find((item) => item.id === id);
   if (existing) {
-    existing.qty = Math.min(99, existing.qty + 1);
+    existing.qty = Math.min(limit, existing.qty + 1);
   } else {
     state.cart.push({ id: product.id, name: product.name, price: product.price, qty: 1 });
   }
@@ -166,7 +206,10 @@ function changeCart(action, id) {
   const item = state.cart.find((entry) => entry.id === id);
   if (!item) return;
 
-  if (action === 'inc') item.qty = Math.min(99, item.qty + 1);
+  const product = state.products.find((entry) => entry.id === id);
+  const limit = Math.min(99, product?.stock ?? 99);
+
+  if (action === 'inc') item.qty = Math.min(limit, item.qty + 1);
   if (action === 'dec') item.qty -= 1;
   if (action === 'remove') item.qty = 0;
   if (item.qty <= 0) state.cart = state.cart.filter((entry) => entry.id !== id);
@@ -236,6 +279,7 @@ function showSuccess(data) {
   $('auth-view').hidden = true;
   $('shop-view').hidden = true;
   $('success-view').hidden = false;
+  $('admin-view').hidden = true;
 }
 
 async function downloadReceipt() {
@@ -282,6 +326,159 @@ async function downloadReceipt() {
   }
 }
 
+function showAdmin() {
+  $('auth-view').hidden = true;
+  $('shop-view').hidden = true;
+  $('success-view').hidden = true;
+  $('admin-view').hidden = false;
+  loadAdminProducts();
+}
+
+function adminMessage(text, ok = false) {
+  const message = $('admin-msg');
+  message.textContent = text;
+  message.classList.toggle('ok', ok);
+}
+
+async function loadAdminProducts() {
+  try {
+    state.adminProducts = await api('/api/admin/products');
+    renderAdminProducts();
+  } catch (error) {
+    adminMessage(error.message);
+  }
+}
+
+function renderAdminProducts() {
+  const container = $('admin-products');
+
+  if (!state.adminProducts.length) {
+    container.innerHTML = '<p class="muted">No hay productos registrados.</p>';
+    return;
+  }
+
+  container.innerHTML = state.adminProducts.map((product) => `
+    <article class="card admin-product${product.active ? '' : ' inactive'}" data-id="${product.id}">
+      <div class="admin-product-head">
+        <strong>#${product.id} · ${escapeHtml(product.name)}</strong>
+        <span class="badge ${product.active ? 'on' : 'off'}">${product.active ? 'Activo' : 'Inactivo'}</span>
+      </div>
+      <div class="form-grid">
+        <label>Nombre
+          <input data-field="name" value="${escapeHtml(product.name)}" maxlength="80">
+        </label>
+        <label>Descripción
+          <input data-field="description" value="${escapeHtml(product.description || '')}" maxlength="240">
+        </label>
+        <label>Precio (COP)
+          <input data-field="price" type="number" min="0" step="1" value="${product.price}">
+        </label>
+        <label>Stock
+          <input data-field="stock" type="number" min="0" max="9999" step="1" value="${product.stock}">
+        </label>
+        <label>Color
+          <input data-field="color" type="color" value="${product.color}">
+        </label>
+      </div>
+      <div class="row admin-actions">
+        <button type="button" data-save="${product.id}">Guardar</button>
+        <button type="button" class="${product.active ? 'danger' : ''}" data-toggle="${product.id}">
+          ${product.active ? 'Eliminar' : 'Reactivar'}
+        </button>
+      </div>
+    </article>
+  `).join('');
+}
+
+async function saveAdminProduct(id) {
+  const card = document.querySelector(`.admin-product[data-id="${id}"]`);
+  if (!card) return;
+
+  const field = (name) => card.querySelector(`[data-field="${name}"]`).value;
+
+  try {
+    const updated = await api(`/api/admin/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        name: field('name'),
+        description: field('description'),
+        price: Number(field('price')),
+        stock: Number(field('stock')),
+        color: field('color')
+      })
+    });
+
+    state.adminProducts = state.adminProducts.map((product) =>
+      product.id === id ? updated : product
+    );
+    renderAdminProducts();
+    adminMessage(`Producto #${id} actualizado.`, true);
+    await loadProducts();
+  } catch (error) {
+    adminMessage(error.message);
+  }
+}
+
+async function toggleAdminProduct(id) {
+  const product = state.adminProducts.find((entry) => entry.id === id);
+  if (!product) return;
+
+  const reactivate = !product.active;
+  if (
+    !reactivate &&
+    !window.confirm(`¿Eliminar "${product.name}" del catálogo? Podrás reactivarlo después.`)
+  ) {
+    return;
+  }
+
+  try {
+    const updated = reactivate
+      ? await api(`/api/admin/products/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ active: 1 })
+        })
+      : await api(`/api/admin/products/${id}`, { method: 'DELETE' });
+
+    state.adminProducts = state.adminProducts.map((entry) =>
+      entry.id === id ? updated : entry
+    );
+    renderAdminProducts();
+    adminMessage(
+      reactivate
+        ? `Producto #${id} reactivado.`
+        : `Producto #${id} eliminado del catálogo.`,
+      true
+    );
+    await loadProducts();
+  } catch (error) {
+    adminMessage(error.message);
+  }
+}
+
+async function createProduct() {
+  try {
+    const created = await api('/api/admin/products', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: $('p-name').value,
+        description: $('p-description').value,
+        price: Number($('p-price').value),
+        stock: Number($('p-stock').value),
+        color: $('p-color').value
+      })
+    });
+
+    $('product-form').reset();
+    $('p-color').value = '#dbe4ee';
+    $('p-stock').value = '0';
+    await loadAdminProducts();
+    await loadProducts();
+    adminMessage(`Producto #${created.id} creado.`, true);
+  } catch (error) {
+    adminMessage(error.message);
+  }
+}
+
 function bindEvents() {
   $('auth-form').addEventListener('submit', (event) => {
     event.preventDefault();
@@ -291,7 +488,33 @@ function bindEvents() {
   $('register-btn').addEventListener('click', () => authenticate('register'));
 
   $('session').addEventListener('click', (event) => {
+    if (event.target.id === 'admin-btn') showAdmin();
     if (event.target.id === 'logout-btn') logout();
+  });
+
+  $('product-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    createProduct();
+  });
+
+  $('admin-products').addEventListener('click', (event) => {
+    const save = event.target.closest('[data-save]');
+    if (save) {
+      saveAdminProduct(Number(save.dataset.save));
+      return;
+    }
+
+    const toggle = event.target.closest('[data-toggle]');
+    if (toggle) toggleAdminProduct(Number(toggle.dataset.toggle));
+  });
+
+  $('admin-back').addEventListener('click', async () => {
+    try {
+      await loadProducts();
+    } catch {
+      // El catálogo se reintenta al volver a la tienda.
+    }
+    showShop();
   });
 
   $('products').addEventListener('click', (event) => {
@@ -376,8 +599,13 @@ function bindEvents() {
 
   $('download-btn').addEventListener('click', downloadReceipt);
 
-  $('continue-btn').addEventListener('click', () => {
+  $('continue-btn').addEventListener('click', async () => {
     $('success-msg').textContent = '';
+    try {
+      await loadProducts();
+    } catch {
+      // Se conserva el catálogo ya cargado.
+    }
     showShop();
   });
 }
@@ -386,17 +614,16 @@ async function boot() {
   bindEvents();
 
   try {
-    state.products = await api('/api/products');
+    await loadProducts();
   } catch (error) {
     $('auth-msg').textContent = 'No se pudo cargar el catálogo. Intenta recargar.';
   }
-
-  renderProducts();
 
   if (state.token) {
     try {
       const data = await api('/api/auth/me');
       state.user = data.user;
+      localStorage.setItem('user', JSON.stringify(state.user));
       showShop();
     } catch {
       logout();
