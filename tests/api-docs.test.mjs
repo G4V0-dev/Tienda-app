@@ -25,7 +25,9 @@ const services = [
       '/api/auth/me',
       '/api/checkout',
       '/api/orders/{id}',
-      '/api/orders/{id}/receipt'
+      '/api/orders/{id}/receipt',
+      '/api/admin/products',
+      '/api/admin/products/{id}'
     ]
   },
   {

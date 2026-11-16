@@ -8,8 +8,8 @@ module.exports = {
     title: 'Tienda Web API',
     version: '1.0.0',
     description:
-      'API de la tienda: catálogo, autenticación JWT, checkout simulado y comprobante PDF. ' +
-      'Orquesta los microservicios ms-iva y ms-pdf.'
+      'API de la tienda: catálogo, autenticación JWT con roles, checkout simulado con stock ' +
+      'y comprobante PDF. Orquesta los microservicios ms-iva y ms-pdf.'
   },
   servers: [
     { url: 'http://localhost:3000', description: 'Local' },
@@ -18,8 +18,9 @@ module.exports = {
   tags: [
     { name: 'Sistema', description: 'Estado del servicio' },
     { name: 'Catálogo', description: 'Productos disponibles' },
-    { name: 'Autenticación', description: 'Registro, login y sesión' },
-    { name: 'Órdenes', description: 'Checkout, consulta y comprobante' }
+    { name: 'Autenticación', description: 'Registro, login, sesión y roles' },
+    { name: 'Órdenes', description: 'Checkout, consulta y comprobante' },
+    { name: 'Administración', description: 'CRUD de productos y stock (rol admin)' }
   ],
   paths: {
     '/api/health': {
@@ -41,7 +42,8 @@ module.exports = {
     '/api/products': {
       get: {
         tags: ['Catálogo'],
-        summary: 'Lista los 6 productos del catálogo',
+        summary: 'Lista los productos activos con stock',
+        description: 'Los productos con stock 0 se listan, pero el checkout los rechaza.',
         responses: {
           200: {
             description: 'Catálogo',
@@ -172,7 +174,15 @@ module.exports = {
             }
           },
           400: { $ref: '#/components/responses/BadRequest' },
-          401: { $ref: '#/components/responses/Unauthorized' }
+          401: { $ref: '#/components/responses/Unauthorized' },
+          409: {
+            description: 'Stock insuficiente para uno o más productos',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          }
         }
       }
     },
@@ -238,6 +248,118 @@ module.exports = {
           }
         }
       }
+    },
+    '/api/admin/products': {
+      get: {
+        tags: ['Administración'],
+        summary: 'Lista todos los productos, incluidos los inactivos',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: {
+            description: 'Productos para el panel',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/AdminProduct' }
+                }
+              }
+            }
+          },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      },
+      post: {
+        tags: ['Administración'],
+        summary: 'Crea un producto',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ProductInput' }
+            }
+          }
+        },
+        responses: {
+          201: {
+            description: 'Producto creado',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/AdminProduct' }
+              }
+            }
+          },
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/api/admin/products/{id}': {
+      put: {
+        tags: ['Administración'],
+        summary: 'Actualiza precio, nombre, stock u otros campos',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'integer', example: 7 }
+          }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ProductUpdate' }
+            }
+          }
+        },
+        responses: {
+          200: {
+            description: 'Producto actualizado',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/AdminProduct' }
+              }
+            }
+          },
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      },
+      delete: {
+        tags: ['Administración'],
+        summary: 'Desactiva un producto (borrado lógico)',
+        description: 'Deja de aparecer en el catálogo y puede reactivarse con active=1.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'integer', example: 7 }
+          }
+        ],
+        responses: {
+          200: {
+            description: 'Producto desactivado',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/AdminProduct' }
+              }
+            }
+          },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
     }
   },
   components: {
@@ -273,6 +395,14 @@ module.exports = {
             schema: { $ref: '#/components/schemas/Error' }
           }
         }
+      },
+      Forbidden: {
+        description: 'El usuario no tiene rol de administrador',
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/Error' }
+          }
+        }
       }
     },
     schemas: {
@@ -300,7 +430,43 @@ module.exports = {
           name: { type: 'string', example: 'Camiseta Clásica' },
           description: { type: 'string', example: 'Algodón 100%, corte regular, uso diario.' },
           price: { type: 'integer', description: 'Precio en COP', example: 45000 },
-          color: { type: 'string', example: '#dbe4ee' }
+          color: { type: 'string', example: '#dbe4ee' },
+          stock: { type: 'integer', description: 'Unidades disponibles', example: 500 }
+        }
+      },
+      AdminProduct: {
+        allOf: [
+          { $ref: '#/components/schemas/Product' },
+          {
+            type: 'object',
+            properties: {
+              active: { type: 'integer', enum: [0, 1], example: 1 },
+              created_at: { type: 'string', format: 'date-time' },
+              updated_at: { type: 'string', format: 'date-time' }
+            }
+          }
+        ]
+      },
+      ProductInput: {
+        type: 'object',
+        required: ['name', 'price'],
+        properties: {
+          name: { type: 'string', maxLength: 80, example: 'Bufanda de Lana' },
+          description: { type: 'string', maxLength: 240, example: 'Tejido suave, unisex.' },
+          price: { type: 'integer', minimum: 0, maximum: 100000000, example: 30000 },
+          color: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$', example: '#aabbcc' },
+          stock: { type: 'integer', minimum: 0, maximum: 9999, default: 0, example: 10 }
+        }
+      },
+      ProductUpdate: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', maxLength: 80 },
+          description: { type: 'string', maxLength: 240 },
+          price: { type: 'integer', minimum: 0, maximum: 100000000 },
+          color: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
+          stock: { type: 'integer', minimum: 0, maximum: 9999 },
+          active: { type: 'integer', enum: [0, 1], description: '0 desactiva y 1 reactiva' }
         }
       },
       User: {
@@ -308,12 +474,16 @@ module.exports = {
         properties: {
           id: { type: 'string', format: 'uuid' },
           name: { type: 'string', example: 'Cliente de Prueba' },
-          email: { type: 'string', format: 'email', example: 'cliente@example.com' }
+          email: { type: 'string', format: 'email', example: 'cliente@example.com' },
+          role: { type: 'string', enum: ['admin', 'user'], example: 'user' }
         }
       },
       RegisterRequest: {
         type: 'object',
         required: ['name', 'email', 'password'],
+        description:
+          'El rol no se acepta desde el cliente. Los correos listados en ADMIN_EMAILS ' +
+          'se registran como admin; el resto como user.',
         properties: {
           name: { type: 'string', example: 'Cliente de Prueba' },
           email: { type: 'string', format: 'email', example: 'cliente@example.com' },
