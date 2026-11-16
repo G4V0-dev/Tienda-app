@@ -78,6 +78,30 @@ describe('Catálogo y autenticación', () => {
     }
   });
 
+  it('permite CORS para la versión web de Expo', async () => {
+    const { response } = await request('/api/products', {
+      headers: { Origin: 'http://localhost:8081' }
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('access-control-allow-origin'), '*');
+
+    const preflight = await fetch(`${base}/api/auth/login`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://localhost:8081',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'authorization,content-type'
+      }
+    });
+
+    assert.equal(preflight.status, 204);
+    assert.match(
+      preflight.headers.get('access-control-allow-headers') || '',
+      /Authorization/i
+    );
+  });
+
   it('registra un usuario, devuelve JWT y permite consultar /me', async () => {
     const email = `carrito-${Date.now()}@example.com`;
     const { response, data } = await request('/api/auth/register', {

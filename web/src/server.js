@@ -12,6 +12,7 @@ const openapi = require('../openapi');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-cambiar-en-produccion';
+const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 
 function serviceUrl(value, fallback) {
   if (!value) return fallback;
@@ -20,6 +21,19 @@ function serviceUrl(value, fallback) {
 
 const IVA_URL = serviceUrl(process.env.IVA_URL, 'http://localhost:4001');
 const PDF_URL = serviceUrl(process.env.PDF_URL, 'http://localhost:4002');
+
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
