@@ -13,6 +13,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-cambiar-en-produccion';
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+const ADMIN_EMAILS = new Set(
+  String(process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+);
 
 function serviceUrl(value, fallback) {
   if (!value) return fallback;
@@ -43,10 +49,14 @@ const route = (handler) => (req, res, next) =>
 
 function signToken(user) {
   return jwt.sign(
-    { id: user.id, email: user.email, name: user.name },
+    { id: user.id, email: user.email, name: user.name, role: user.role || 'user' },
     JWT_SECRET,
     { expiresIn: '7d' }
   );
+}
+
+function roleForEmail(email) {
+  return ADMIN_EMAILS.has(String(email).trim().toLowerCase()) ? 'admin' : 'user';
 }
 
 function auth(req, res, next) {
@@ -57,6 +67,19 @@ function auth(req, res, next) {
     next();
   } catch {
     res.status(401).json({ error: 'Sesión inválida o expirada' });
+  }
+}
+
+async function admin(req, res, next) {
+  try {
+    const rows = await read('SELECT role FROM users WHERE id = $1', [req.user.id]);
+    if (rows[0]?.role !== 'admin') {
+      return res.status(403).json({ error: 'Requiere rol de administrador' });
+    }
+    req.user.role = 'admin';
+    next();
+  } catch (error) {
+    next(error);
   }
 }
 
@@ -95,18 +118,19 @@ app.post('/api/auth/register', route(async (req, res) => {
     name: String(name).trim(),
     email: normalizedEmail,
     password_hash: await bcrypt.hash(String(password), 10),
+    role: roleForEmail(normalizedEmail),
     created_at: new Date().toISOString()
   };
 
   await write(
-    `INSERT INTO users (id, name, email, password_hash, created_at)
-     VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
-    [user.id, user.name, user.email, user.password_hash, user.created_at]
+    `INSERT INTO users (id, name, email, password_hash, role, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`,
+    [user.id, user.name, user.email, user.password_hash, user.role, user.created_at]
   );
 
   res.status(201).json({
     token: signToken(user),
-    user: { id: user.id, name: user.name, email: user.email }
+    user: { id: user.id, name: user.name, email: user.email, role: user.role }
   });
 }));
 
@@ -128,13 +152,21 @@ app.post('/api/auth/login', route(async (req, res) => {
 
   res.json({
     token: signToken(user),
-    user: { id: user.id, name: user.name, email: user.email }
+    user: { id: user.id, name: user.name, email: user.email, role: user.role || 'user' }
   });
 }));
 
-app.get('/api/auth/me', auth, (req, res) => {
-  res.json({ user: { id: req.user.id, name: req.user.name, email: req.user.email } });
-});
+app.get('/api/auth/me', auth, route(async (req, res) => {
+  const rows = await read('SELECT id, name, email, role FROM users WHERE id = $1', [
+    req.user.id
+  ]);
+
+  if (!rows.length) {
+    return res.status(401).json({ error: 'Sesión inválida o expirada' });
+  }
+
+  res.json({ user: rows[0] });
+}));
 
 app.post('/api/checkout', auth, route(async (req, res) => {
   const { items, card } = req.body || {};
