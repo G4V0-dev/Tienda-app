@@ -73,7 +73,7 @@ async function stopService(service) {
   });
 }
 
-export async function startStack() {
+export async function startStack(overrides = {}) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tienda-tests-'));
   const [ivaPort, pdfPort, webPort] = await Promise.all([
     freePort(),
@@ -90,7 +90,8 @@ export async function startStack() {
     JWT_SECRET: 'test-secret-solo-para-pruebas',
     IVA_URL: `http://127.0.0.1:${ivaPort}`,
     PDF_URL: `http://127.0.0.1:${pdfPort}`,
-    SUPABASE_DB_URL: ''
+    SUPABASE_DB_URL: '',
+    ...overrides
   });
 
   const services = [iva, pdf, web];
