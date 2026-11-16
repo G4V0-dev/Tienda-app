@@ -30,6 +30,9 @@ export default defineConfig({
         reuseExistingServer: true,
         timeout: 120_000,
         stdout: 'pipe',
-        stderr: 'pipe'
+        stderr: 'pipe',
+        env: {
+          ADMIN_EMAILS: 'admin-e2e@example.com'
+        }
       }
 });
