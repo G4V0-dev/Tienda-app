@@ -6,6 +6,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { init, read, write, randomUUID, cloudState } = require('./db');
 const products = require('./products');
+const swaggerUi = require('swagger-ui-express');
+const openapi = require('../openapi');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -298,6 +300,15 @@ app.get('/api/orders/:id/receipt', auth, route(async (req, res) => {
     res.status(502).json({ error: 'No se pudo generar el comprobante PDF' });
   }
 }));
+
+app.use(
+  '/docs',
+  swaggerUi.serve,
+  swaggerUi.setup(openapi, { customSiteTitle: 'Tienda Web API' })
+);
+app.get('/openapi.json', (req, res) => {
+  res.json(openapi);
+});
 
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Ruta no encontrada' });
