@@ -25,6 +25,7 @@ Fuera de alcance:
 - Imágenes, tallas, variantes o códigos SKU.
 - Auditoría de cambios, historial de stock o reservas.
 - Pasarela de pago real, verificación de correo, 2FA o límites de tasa.
+- Operación multi-instancia o multi-escritor: los IDs nuevos usan `MAX(id)+1` y la cola local-first asume un proceso por base.
 
 ## Modelo de datos
 
@@ -142,6 +143,7 @@ Códigos relevantes: `400` datos inválidos, `401` sin sesión, `403` sin rol ad
 | Supabase caído | Se escribe en SQLite y se encola la sincronización |
 | Base existente sin `role` | Se agrega la columna con valor `user` al iniciar |
 | Catálogo existente | El seed usa `ON CONFLICT DO NOTHING`; no pisa ediciones ni reactiva productos |
+| Dos administradores crean productos a la vez | Los IDs `MAX(id)+1` pueden colisionar; el plan gratuito de Render usa una sola instancia |
 
 ## Migración y compatibilidad
 
