@@ -301,6 +301,14 @@ app.post('/api/checkout', auth, route(async (req, res) => {
     return res.status(400).json({ error: 'No hay productos válidos en el carrito' });
   }
 
+  for (const item of normalizedItems) {
+    if (item.qty > item.product.stock) {
+      return res.status(409).json({
+        error: `Stock insuficiente para ${item.product.name}. Disponible: ${item.product.stock}`
+      });
+    }
+  }
+
   const cardNumber = String(card?.number || '').replace(/\D/g, '');
   const cardName = String(card?.name || '').trim();
   const expiry = String(card?.expiry || '').trim();
@@ -342,6 +350,35 @@ app.post('/api/checkout', auth, route(async (req, res) => {
   const total = subtotal + iva;
   const orderId = randomUUID();
   const createdAt = new Date().toISOString();
+
+  const decremented = [];
+  try {
+    for (const item of normalizedItems) {
+      const result = await write(
+        `UPDATE products
+         SET stock = stock - $1, updated_at = $2
+         WHERE id = $3 AND stock >= $1`,
+        [item.qty, createdAt, item.product.id]
+      );
+      if (!result.changes) {
+        throw Object.assign(new Error('Stock insuficiente'), { statusCode: 409 });
+      }
+      decremented.push(item);
+    }
+  } catch (error) {
+    for (const item of decremented) {
+      await write('UPDATE products SET stock = stock + $1 WHERE id = $2', [
+        item.qty,
+        item.product.id
+      ]);
+    }
+    if (error.statusCode === 409) {
+      return res.status(409).json({
+        error: 'El stock cambió durante el pago. Revisa el carrito e intenta de nuevo.'
+      });
+    }
+    throw error;
+  }
 
   const order = {
     id: orderId,
